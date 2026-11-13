@@ -37,7 +37,7 @@ After editing any file, click the reload icon on the CYBROT card in `chrome://ex
 
 1. Open a website, for example `https://example.com`.
 2. Click the CYBROT icon. The popup shows the detected domain (`example.com`).
-3. Choose the scan modules (DNS records, Subdomains, SSL / TLS, WHOIS). Leave **Passive sources only** on unless you have permission for active checks.
+3. Choose the scan modules (DNS records, Subdomains, SSL / TLS, WHOIS). Scans are always passive (no direct probes of the target).
 4. Click **Start scan**. The popup shows progress and each module's status.
 5. When the scan completes, the results appear. Use **Export JSON** to save them, or **Open in dashboard** to view them in the full CYBROT dashboard.
 
@@ -144,10 +144,10 @@ The stub listens on `http://127.0.0.1:8000`. A scan takes about 12 seconds and r
 
 ## Permissions and privacy
 
-- **`tabs`**: needed to read the address of the active tab, so the domain can be detected. Chrome and Edge show a warning that the extension can read your browsing activity. The extension reads only the active tab, and only when you open the popup.
-- **`storage`**: keeps the last scan so the popup can resume or show it.
-- **Host permissions** (`127.0.0.1` and `localhost` on port 8000): the extension talks only to the local engine. What the engine does with the domain, including any external lookups, is up to the engine.
-- Scans default to **passive sources only**.
+- **`activeTab`**: gives the extension the address of the tab you are on, only after you click the CYBROT icon. It does not give access to your browsing history, and Chrome and Edge do not show a "read your browsing history" warning for it. The extension cannot read other tabs.
+- **`storage`**: keeps the last scan so the popup can resume or show it. Stored on this computer only.
+- **Host permission** (`127.0.0.1` on port 8000): the extension talks only to the local engine. What the engine does with the domain, including any external lookups, is up to the engine.
+- Scans are always **passive sources only** in this version. There is no option to run active checks against a website from the extension.
 
 ## Known limits (first version)
 

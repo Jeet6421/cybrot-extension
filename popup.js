@@ -24,7 +24,13 @@
     lastScan: null,
     pollTimer: null,
     clockTimer: null,
+    pollFailures: 0,
   };
+
+  // Scans are passive-only in this version. Active checks are not offered.
+  const PASSIVE_ONLY = true;
+  const REQUEST_TIMEOUT_MS = 10000;
+  const MAX_POLL_FAILURES = 3;
 
   const $ = (id) => document.getElementById(id);
 
@@ -68,11 +74,26 @@
   // ---------- Engine connection ----------
 
   async function engineFetch(path, options = {}) {
-    const response = await fetch(CYBROT_CONFIG.engineUrl + path, {
-      method: options.method || "GET",
-      headers: { "Content-Type": "application/json" },
-      body: options.body,
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(CYBROT_CONFIG.engineUrl + path, {
+        method: options.method || "GET",
+        headers: { "Content-Type": "application/json" },
+        body: options.body,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err.name === "AbortError") {
+        const timeout = new Error("The CYBROT engine did not respond in time.");
+        timeout.code = "ENGINE_TIMEOUT";
+        throw timeout;
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
     let payload = null;
     try {
       payload = await response.json();
@@ -108,7 +129,9 @@
     } catch (_) {
       state.engineOnline = false;
       setEngineStatus("offline", "Engine offline");
-      setIdleMessage(`The CYBROT engine is not running at ${CYBROT_CONFIG.engineUrl}.`);
+      setIdleMessage(
+        "The CYBROT engine isn't running on this computer. Start it using SETUP.md in the extension folder, then click the Engine offline status to check again."
+      );
     }
     $("start-scan").disabled = !state.engineOnline;
     return state.engineOnline;
@@ -145,12 +168,12 @@
     }
     setIdleMessage("");
     state.modules = chosen;
-    state.passive = $("passive-only").checked;
+    state.passive = PASSIVE_ONLY;
     $("start-scan").disabled = true;
     try {
       const { scan_id } = await engineFetch("/api/scans", {
         method: "POST",
-        body: JSON.stringify({ domain: state.domain, modules: chosen, passive_only: state.passive }),
+        body: JSON.stringify({ domain: state.domain, modules: chosen, passive_only: PASSIVE_ONLY }),
       });
       state.scanId = scan_id;
       state.startedAt = Date.now();
@@ -178,9 +201,16 @@
     try {
       const scan = await engineFetch(`/api/scans/${encodeURIComponent(scanId)}`);
       if (scanId !== state.scanId) return; // a newer scan replaced this one
+      state.pollFailures = 0;
       handleScan(scan);
     } catch (err) {
       if (scanId !== state.scanId) return;
+      // Retry a few times before giving up, so one slow response does not fail the scan.
+      state.pollFailures += 1;
+      if (state.pollFailures < MAX_POLL_FAILURES) {
+        state.pollTimer = setTimeout(poll, CYBROT_CONFIG.pollIntervalMs);
+        return;
+      }
       finishWithFailure({ message: friendlyError(err), code: err.code || "ENGINE_UNREACHABLE" });
     }
   }
@@ -420,10 +450,11 @@
     return stored[STORAGE_KEY] || null;
   }
 
-  async function saveLastScan(patch) {
-    const previous = (await loadLastScan()) || {};
+  // Replace the stored record rather than merging into the old one, so a new
+  // scan never keeps results or errors from an earlier scan of another site.
+  async function saveLastScan(record) {
     await chrome.storage.local.set({
-      [STORAGE_KEY]: { ...previous, ...patch, domain: state.domain },
+      [STORAGE_KEY]: { ...record, domain: state.domain },
     });
   }
 
@@ -435,7 +466,7 @@
     if (sameSite && last.status === "running" && last.scanId) {
       state.scanId = last.scanId;
       state.modules = last.modules || [];
-      state.passive = last.passive !== false;
+      state.passive = PASSIVE_ONLY;
       state.startedAt = last.startedAt || Date.now();
       showView("scanning");
       startClock();
