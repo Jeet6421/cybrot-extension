@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CYBROT</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup">
+    <header class="topbar">
+      <img class="logo" src="assets/cybrot-logo.png" alt="" aria-hidden="true">
+      <span class="wordmark">CYBROT</span>
+      <span class="spacer"></span>
+      <button id="engine-status" class="pill" type="button" data-state="checking" title="Check the engine connection">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="engine-status-text">Checking engine…</span>
+      </button>
+    </header>
+
+    <main>
+      <!-- Shown when the active tab is not a normal website -->
+      <section id="view-unsupported" class="view" hidden>
+        <p class="label">Can't scan this page</p>
+        <p class="muted">CYBROT scans websites by domain name. Open a normal website (http or https) in the active tab, then reopen CYBROT.</p>
+      </section>
+
+      <!-- Domain detected, waiting for the user to start a scan -->
+      <section id="view-idle" class="view" hidden>
+        <p class="label">Detected on this tab</p>
+        <div class="card">
+          <div id="idle-domain" class="domain">—</div>
+          <div id="idle-meta" class="meta"></div>
+        </div>
+
+        <p class="label">Scan modules</p>
+        <div class="modules">
+          <label class="check"><input type="checkbox" name="module" value="dns" checked>DNS records</label>
+          <label class="check"><input type="checkbox" name="module" value="subdomains" checked>Subdomains</label>
+          <label class="check"><input type="checkbox" name="module" value="hosts" checked>Name resolution</label>
+          <label class="check"><input type="checkbox" name="module" value="ssl" checked>SSL / TLS</label>
+          <label class="check"><input type="checkbox" name="module" value="whois" checked>WHOIS</label>
+          <label class="check"><input type="checkbox" name="module" value="threat" checked>Threat intel</label>
+        </div>
+
+        <div class="passive locked">
+          <span class="lock" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          </span>
+          <span>Passive sources only<span class="hint">No direct probes of the target. Always on in this version.</span></span>
+        </div>
+
+        <span class="spacer"></span>
+        <p id="idle-message" class="message" hidden></p>
+        <button id="start-scan" class="btn primary block" type="button">Start scan</button>
+        <p id="last-scan-note" class="note"></p>
+        <button id="view-last" class="btn block" type="button" hidden>View last results</button>
+      </section>
+
+      <!-- Scan running: progress and module status -->
+      <section id="view-scanning" class="view" hidden>
+        <div class="card">
+          <div class="card-head">
+            <div id="scan-domain" class="domain">—</div>
+            <span class="status status-running">Running</span>
+          </div>
+          <div id="scan-elapsed" class="meta">Elapsed 00:00</div>
+        </div>
+
+        <div class="progress-head">
+          <span class="muted">Overall progress</span>
+          <span id="progress-text" class="mono">0%</span>
+        </div>
+        <div id="progress-bar" class="progress" role="progressbar" aria-label="Scan progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+
+        <ul id="module-list" class="steps"></ul>
+
+        <span class="spacer"></span>
+        <button id="stop-scan" class="btn danger block" type="button">Stop scan</button>
+      </section>
+
+      <!-- Scan failed: the reason and what was kept -->
+      <section id="view-failed" class="view" hidden>
+        <div class="card">
+          <div class="card-head">
+            <div id="failed-domain" class="domain">—</div>
+            <span class="status status-failed">Failed</span>
+          </div>
+        </div>
+
+        <div class="alert" role="alert">
+          <strong>The engine did not finish the scan</strong>
+          <p id="error-message"></p>
+          <span id="error-code" class="code"></span>
+        </div>
+
+        <ul id="failed-modules" class="steps"></ul>
+        <p class="muted">Check that the CYBROT engine is running on this computer, then try again.</p>
+
+        <span class="spacer"></span>
+        <button id="retry-scan" class="btn primary block" type="button">Retry scan</button>
+        <button id="back-to-idle" class="btn block" type="button">Back</button>
+      </section>
+
+      <!-- Scan completed: the OSINT results -->
+      <section id="view-results" class="view" hidden>
+        <div class="card">
+          <div class="card-head">
+            <div id="result-domain" class="domain">—</div>
+            <span class="status status-done">Completed</span>
+          </div>
+          <div id="result-meta" class="meta"></div>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div id="stat-subdomains" class="stat-value">0</div><div class="stat-label">Names found</div></div>
+          <div class="stat"><div id="stat-resolving" class="stat-value">—</div><div class="stat-label">Resolve in DNS</div></div>
+          <div class="stat"><div id="stat-certs" class="stat-value">0</div><div class="stat-label">Certificates</div></div>
+          <div class="stat"><div id="stat-threat" class="stat-value text">—</div><div class="stat-label">Threat intel</div></div>
+        </div>
+
+        <p class="label">Observations</p>
+        <ul id="observations" class="notes"></ul>
+
+        <p class="label">Threat intelligence</p>
+        <div class="card">
+          <div id="threat-verdict" class="verdict" data-tone="muted">—</div>
+          <ul id="threat-providers" class="plain"></ul>
+        </div>
+
+        <p class="label">Key facts</p>
+        <dl id="facts"></dl>
+
+        <p class="label">Download report</p>
+        <div id="report-buttons" class="report-buttons">
+          <button class="btn" type="button" data-format="html">HTML</button>
+          <button class="btn" type="button" data-format="pdf">PDF</button>
+          <button class="btn" type="button" data-format="csv">CSV</button>
+          <button class="btn" type="button" data-format="json">JSON</button>
+        </div>
+        <p id="report-status" class="note report-status" aria-live="polite" hidden></p>
+
+        <p id="subdomain-count" class="label">Names found</p>
+        <div id="subdomain-list" class="chips"></div>
+        <p class="note">Green names resolve in DNS. A name that resolves does not show that a website answers there.</p>
+
+        <p class="label">DNS records</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th scope="col">Type</th><th scope="col">Value</th><th scope="col">TTL</th></tr>
+            </thead>
+            <tbody id="dns-rows"></tbody>
+          </table>
+        </div>
+
+        <p class="label">Certificates</p>
+        <ul id="cert-list" class="plain"></ul>
+
+        <p id="warnings-label" class="label" hidden>Warnings</p>
+        <ul id="result-warnings" class="notes warn-list" hidden></ul>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <button id="open-dashboard" class="btn primary" type="button">Open in dashboard</button>
+    </footer>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
