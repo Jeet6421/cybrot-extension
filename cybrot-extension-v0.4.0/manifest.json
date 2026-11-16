@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "CYBROT OSINT Scanner",
+  "version": "0.4.0",
+  "description": "Start a CYBROT OSINT scan of the website in your current tab, without opening the dashboard.",
+  "action": {
+    "default_title": "CYBROT OSINT Scanner",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "http://127.0.0.1:8000/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
