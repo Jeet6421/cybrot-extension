@@ -39,7 +39,7 @@ After editing any file, click the reload icon on the CYBROT card in `chrome://ex
 2. Click the CYBROT icon. The popup shows the detected domain (`example.com`).
 3. Choose the scan modules (DNS records, Subdomains, SSL / TLS, WHOIS). Scans are always passive (no direct probes of the target).
 4. Click **Start scan**. The popup shows progress and each module's status.
-5. When the scan completes, the results appear. Use **Export JSON** to save them, or **Open in dashboard** to view them in the full CYBROT dashboard.
+5. When the scan completes, the results appear. Use **Download report** to save an HTML, CSV or JSON report, or **Open in dashboard** to view them in the full CYBROT dashboard.
 
 If you close the popup during a scan, reopen it on the same site and the scan picks up where it was. Scan state is stored in the browser, not in the popup.
 

@@ -79,5 +79,32 @@ class PopupTests(unittest.TestCase):
         self.assertIsNone(re.search(r"\bon[a-z]+\s*=", html), "inline event handler found in popup.html")
 
 
+class ReportDownloadTests(unittest.TestCase):
+    def setUp(self):
+        self.html = read("popup.html")
+        self.js = read("popup.js")
+
+    def test_three_report_buttons_in_results_view(self):
+        results = self.html.split('id="view-results"', 1)[1]
+        for fmt in ("html", "csv", "json"):
+            self.assertIn(f'data-format="{fmt}"', results, f"missing {fmt} report button")
+
+    def test_report_buttons_use_engine_report_endpoints(self):
+        self.assertIn("/api/scans/", self.js)
+        self.assertRegex(self.js, r"report\.\$\{format\}")
+
+    def test_report_download_uses_scan_id_and_timeout(self):
+        self.assertIn("encodeURIComponent(data.scan_id)", self.js)
+        self.assertIn("REQUEST_TIMEOUT_MS", self.js.split("async function downloadReport", 1)[1])
+
+    def test_export_json_removed(self):
+        self.assertNotIn("export-json", self.html)
+        self.assertNotIn("export-json", self.js)
+        self.assertNotIn("exportJson", self.js)
+
+    def test_report_status_is_announced(self):
+        self.assertIn('aria-live="polite"', self.html)
+
+
 if __name__ == "__main__":
     unittest.main()

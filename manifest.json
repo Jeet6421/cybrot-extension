@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CYBROT OSINT Scanner",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Start a CYBROT OSINT scan of the website in your current tab, without opening the dashboard.",
   "action": {
     "default_title": "CYBROT OSINT Scanner",

@@ -47,7 +47,7 @@
     for (const view of VIEWS) {
       $("view-" + view).hidden = view !== name;
     }
-    $("export-json").hidden = name !== "results";
+    if (name === "results") setReportStatus("");
   }
 
   function setDomainLabels(domain) {
@@ -421,20 +421,72 @@
     });
   }
 
-  // ---------- Export and dashboard ----------
+  // ---------- Report download and dashboard ----------
 
-  function exportJson() {
-    const data = state.shownResults;
-    if (!data) return;
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const REPORT_FORMATS = ["html", "csv", "json"];
+
+  function setReportStatus(text, tone) {
+    const node = $("report-status");
+    node.textContent = text || "";
+    node.hidden = !text;
+    node.dataset.state = tone || "";
+  }
+
+  function setReportBusy(busy) {
+    for (const button of $("report-buttons").querySelectorAll("button")) {
+      button.disabled = busy;
+    }
+  }
+
+  function reportFailure(err) {
+    if (err && err.name === "AbortError") return "The engine did not respond in time.";
+    if (err instanceof TypeError) return friendlyError(err);
+    return err && err.message ? err.message : "The report could not be downloaded.";
+  }
+
+  function reportHttpError(status) {
+    if (status === 404) {
+      return new Error("This scan is no longer on the engine. The engine may have restarted, so run the scan again.");
+    }
+    if (status === 409) return new Error("The scan is not finished yet. Reports are ready once it completes.");
+    return new Error(`The engine could not create the report (HTTP ${status}).`);
+  }
+
+  function saveBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const link = el("a");
     link.href = url;
-    link.download = `cybrot-${data.domain}-${data.scan_id || "scan"}.json`;
+    link.download = filename;
     document.body.append(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function downloadReport(format) {
+    const data = state.shownResults;
+    if (!data || !data.scan_id || !REPORT_FORMATS.includes(format)) {
+      setReportStatus("Run a scan first, then download its report.", "error");
+      return;
+    }
+    const label = format.toUpperCase();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    setReportBusy(true);
+    setReportStatus(`Preparing the ${label} report…`);
+    try {
+      const path = `/api/scans/${encodeURIComponent(data.scan_id)}/report.${format}`;
+      const response = await fetch(CYBROT_CONFIG.engineUrl + path, { signal: controller.signal });
+      if (!response.ok) throw reportHttpError(response.status);
+      const blob = await response.blob();
+      saveBlob(blob, `cybrot-${data.domain}-${data.scan_id}.${format}`);
+      setReportStatus(`${label} report downloaded.`, "ok");
+    } catch (err) {
+      setReportStatus(reportFailure(err), "error");
+    } finally {
+      clearTimeout(timer);
+      setReportBusy(false);
+    }
   }
 
   function openDashboard() {
@@ -530,7 +582,10 @@
     $("retry-scan").addEventListener("click", () => startScan(state.modules));
     $("back-to-idle").addEventListener("click", showIdle);
     $("view-last").addEventListener("click", showLastResults);
-    $("export-json").addEventListener("click", exportJson);
+    $("report-buttons").addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-format]");
+      if (button) downloadReport(button.dataset.format);
+    });
     $("open-dashboard").addEventListener("click", openDashboard);
     $("engine-status").addEventListener("click", () => checkEngine());
 

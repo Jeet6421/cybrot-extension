@@ -121,6 +121,14 @@
           <div class="stat"><div id="stat-ssl" class="stat-value">—</div><div class="stat-label">SSL grade</div></div>
         </div>
 
+        <p class="label">Download report</p>
+        <div id="report-buttons" class="report-buttons">
+          <button class="btn" type="button" data-format="html">HTML</button>
+          <button class="btn" type="button" data-format="csv">CSV</button>
+          <button class="btn" type="button" data-format="json">JSON</button>
+        </div>
+        <p id="report-status" class="note report-status" aria-live="polite" hidden></p>
+
         <p class="label">Domain details</p>
         <dl id="details"></dl>
 
@@ -143,7 +151,6 @@
     </main>
 
     <footer class="footer">
-      <button id="export-json" class="btn" type="button" hidden>Export JSON</button>
       <button id="open-dashboard" class="btn primary" type="button">Open in dashboard</button>
     </footer>
   </div>
